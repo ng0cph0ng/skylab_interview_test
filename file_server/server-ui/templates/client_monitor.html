@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Client Monitor</title>
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f4f4f4;
+        padding: 20px;
+      }
+
+      h1 {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      .btn {
+        background: #4c8bf5;
+        color: white;
+        padding: 8px 12px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      .btn:hover {
+        background: #3a6ec7;
+      }
+
+      .btn-back {
+        background: #555;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        margin-top: 15px;
+      }
+
+      table th,
+      table td {
+        padding: 10px;
+        text-align: center;
+        border-bottom: 1px solid #ddd;
+      }
+
+      table th {
+        background: #ececec;
+        font-weight: bold;
+      }
+
+      .online {
+        color: #0a8d2c;
+        font-weight: bold;
+      }
+
+      .offline {
+        color: #b30000;
+        font-weight: bold;
+      }
+
+      .action-btn {
+        background: #3498db;
+        padding: 6px 10px;
+        color: white;
+        border-radius: 4px;
+        text-decoration: none;
+      }
+      .action-btn:hover {
+        background: #2174a1;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Client Monitor</h1>
+
+    <div
+      style="
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 20px;
+      "
+    >
+      <div>
+        {% if role == "ADMIN" %}
+        <a
+          href="{{ url_for('client_manager.client_manager') }}"
+          class="btn"
+          style="margin-right: 10px; text-decoration: none"
+        >
+          🛠️ Go to Client Manager
+        </a>
+        {% endif %}
+        <button
+          class="btn"
+          style="background: #3498db"
+          onclick="location.reload();"
+        >
+          🔄 Refresh
+        </button>
+      </div>
+
+      <div>
+        <span style="margin-right: 10px; font-weight: bold">
+          {{ session.get("username") }}
+        </span>
+
+        <a
+          href="{{ url_for('login.logout') }}"
+          class="btn"
+          style="background: #e74c3c; text-decoration: none"
+        >
+          🚪 Logout
+        </a>
+      </div>
+    </div>
+
+    <table>
+      <tr>
+        <th>Client ID</th>
+        <th>Status</th>
+        <th>Files</th>
+        <th>Storage Usage</th>
+        <th>Storage</th>
+      </tr>
+
+      {% for c in clients %}
+      <tr>
+        <td>{{ c.client_id }}</td>
+
+        <td>
+          {% if c.status == "ONLINE" %}
+          <span class="online">● Online</span>
+          {% else %}
+          <span class="offline">● Offline</span>
+          {% endif %}
+        </td>
+
+        <td>{{ c.file_count }} files</td>
+        <td>{{ c.used_storage }} / {{ c.capacity_max }}</td>
+
+        <td>
+          <a
+            href="{{ url_for('client_storage.client_storage', client_id=c.client_id) }}"
+            class="action-btn"
+            style="background: #4c8bf5"
+          >
+            📁 View Storage
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </body>
+</html>

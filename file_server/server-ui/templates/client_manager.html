@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Client Manager</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f4f4f4;
+        padding: 20px;
+      }
+      h1 {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .btn {
+        background: #4c8bf5;
+        color: white;
+        padding: 10px 15px;
+        border: none;
+        cursor: pointer;
+        border-radius: 5px;
+        margin-bottom: 20px;
+      }
+      .btn:hover {
+        background: #3a6ec7;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+      }
+      table th,
+      table td {
+        padding: 10px;
+        text-align: center;
+        border-bottom: 1px solid #ddd;
+      }
+      table th {
+        background: #e6e6e6;
+      }
+      .action-btn {
+        padding: 5px 10px;
+        text-decoration: none;
+        border-radius: 4px;
+        color: white;
+      }
+      .edit-btn {
+        background: #3498db;
+      }
+      .delete-btn {
+        background: #e74c3c;
+      }
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        justify-content: center;
+        align-items: center;
+      }
+      .modal-content {
+        background: white;
+        padding: 20px;
+        width: 350px;
+        border-radius: 8px;
+      }
+      input,
+      select {
+        width: 100%;
+        padding: 8px;
+        margin: 8px 0;
+        box-sizing: border-box;
+      }
+
+      .input-error {
+        border: 2px solid red;
+        background: #ffe6e6;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Client Manager</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %} {% if
+    messages %} {% for category, msg in messages %}
+    <div
+      class="flash-{{category}}"
+      style="
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 5px;
+        font-weight: bold;
+        text-align: center;
+      "
+    >
+      {{ msg }}
+    </div>
+    {% endfor %} {% endif %} {% endwith %}
+
+    <div
+      style="
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 20px;
+      "
+    >
+      <div>
+        <a
+          href="{{ url_for('client_monitor.client_monitor') }}"
+          class="btn"
+          style="background: #555; margin-right: 10px; text-decoration: none"
+        >
+          ⬅ Back
+        </a>
+
+        <button
+          class="btn"
+          onclick="document.getElementById('addModal').style.display='flex'"
+        >
+          ➕ Add New Client
+        </button>
+      </div>
+
+      <div>
+        <span style="margin-right: 10px; font-weight: bold">
+          {{ session.get("username") }}
+        </span>
+
+        <a
+          href="{{ url_for('login.logout') }}"
+          class="btn"
+          style="background: #e74c3c; text-decoration: none"
+        >
+          🚪 Logout
+        </a>
+      </div>
+    </div>
+
+    <table>
+      <tr>
+        <th>Client ID</th>
+        <th>Owner</th>
+        <th>Capacity</th>
+        <th>Actions</th>
+      </tr>
+
+      {% for c in clients %}
+      <tr>
+        <td>{{ c.client_id }}</td>
+        <td>{{ c.username }}</td>
+        <td>{{ c.capacity_max }} GB</td>
+        <td>
+          <a
+            href="#"
+            class="action-btn edit-btn"
+            onclick="event.preventDefault(); openEditModal('{{ c.client_id }}');"
+            >Edit</a
+          >
+
+          <form
+            action="/client-manager/delete/{{ c.client_id }}"
+            method="POST"
+            style="display: inline"
+            onsubmit="return confirm('Are you sure you want to delete {{ c.client_id }}?');"
+          >
+            <button class="action-btn delete-btn">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+
+    <div id="addModal" class="modal">
+      <div class="modal-content">
+        <h3>Add New Client</h3>
+        <form action="{{ url_for('client_manager.client_add') }}" method="POST">
+          <label>Client ID:</label>
+          <input
+            type="text"
+            name="client_id"
+            value="{{ failed_client_id if failed_client_id else '' }}"
+            class="{% if add_error %}input-error{% endif %}"
+            required
+          />
+          {% if add_error %}
+          <p
+            style="
+              color: red;
+              font-size: 14px;
+              margin-top: -5px;
+              font-weight: bold;
+            "
+          >
+            {{ add_error }}
+          </p>
+          {% endif %}
+
+          <label>Password:</label>
+          <input type="password" name="password" required />
+
+          <label>Capacity (GB):</label>
+          <input type="number" name="capacity" min="1" required />
+
+          <label>Search Owner:</label>
+          <input
+            type="text"
+            placeholder="Type to filter user..."
+            id="userSearch"
+            onkeyup="filterUsers()"
+          />
+
+          <label>Select Owner:</label>
+          <select
+            name="user_owner"
+            id="userSelect"
+            size="4"
+            style="height: 100px"
+            onclick="selectUserValue()"
+          >
+            {% for u in users %}
+            <option value="{{ u.user_id }}">{{ u.username }}</option>
+            {% endfor %}
+          </select>
+
+          <button class="btn" style="width: 100%">Add Client</button>
+        </form>
+
+        <button
+          class="btn"
+          style="background: #777; width: 100%"
+          onclick="document.getElementById('addModal').style.display='none'"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+
+    {% if show_add_modal %}
+    <script>
+      document.getElementById("addModal").style.display = "flex";
+    </script>
+    {% endif %}
+
+    <div id="editModal" class="modal">
+      <div class="modal-content">
+        <h3>Update Client Password</h3>
+        <form id="editForm" method="POST">
+          <label>Client ID :</label>
+          <input type="text" id="edit_client_id" disabled />
+
+          <label>New Password (required):</label>
+          <input type="password" name="password" id="edit_password" required />
+
+          <button class="btn" style="width: 100%">Update Password</button>
+        </form>
+
+        <button
+          class="btn"
+          style="background: #777; width: 100%"
+          onclick="document.getElementById('editModal').style.display='none'"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+
+    <script>
+      function filterUsers() {
+        let input = document.getElementById("userSearch").value.toLowerCase();
+        let list = document.getElementById("userSelect").options;
+        for (let i = 0; i < list.length; i++) {
+          let text = list[i].text.toLowerCase();
+          list[i].style.display = text.includes(input) ? "" : "none";
+        }
+        document.getElementById("userSelect").size = 4;
+      }
+
+      function selectUserValue() {
+        let select = document.getElementById("userSelect");
+        let input = document.getElementById("userSearch");
+        input.value = select.options[select.selectedIndex].text;
+        select.value = select.options[select.selectedIndex].value;
+        select.size = 1;
+      }
+
+      function openEditModal(id) {
+        document.getElementById("edit_client_id").value = id;
+        document.getElementById("edit_password").value = "";
+        document.getElementById("editForm").action =
+          "/client-manager/edit/" + id;
+        document.getElementById("editModal").style.display = "flex";
+      }
+
+      document.addEventListener("click", function (e) {
+        if (e.target.classList.contains("modal")) {
+          e.target.style.display = "none";
+        }
+      });
+    </script>
+  </body>
+</html>

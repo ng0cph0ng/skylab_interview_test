@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Client Storage - {{ client_id }}</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f4f4f4;
+        padding: 20px;
+      }
+      h1 {
+        text-align: center;
+      }
+      .btn {
+        background: #4c8bf5;
+        color: white;
+        padding: 8px 12px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        text-decoration: none;
+      }
+      .btn:hover {
+        background: #3a6ec7;
+      }
+      .btn-back {
+        background: #555;
+      }
+      .btn-request {
+        background: #1abc9c;
+      }
+      .btn-cancel {
+        background: #f39c12;
+      }
+      .btn-delete {
+        background: #e74c3c;
+      }
+      .btn-download {
+        background: #2ecc71;
+      }
+
+      table {
+        width: 100%;
+        background: white;
+        border-collapse: collapse;
+        margin-top: 20px;
+      }
+      th,
+      td {
+        padding: 10px;
+        text-align: center;
+        border-bottom: 1px solid #ddd;
+      }
+      th {
+        background: #ececec;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Client Storage - {{ client_id }}</h1>
+
+    <div style="display: flex; gap: 10px; margin-bottom: 15px">
+      <a
+        href="{{ url_for('client_monitor.client_monitor') }}"
+        class="btn btn-back"
+        >⬅ Back</a
+      >
+
+      <form
+        id="uploadForm"
+        action="{{ url_for('client_storage.request_upload', client_id=client_id) }}"
+        method="POST"
+        style="display: inline"
+      >
+        <button class="btn btn-request" type="submit">📤 Request Upload</button>
+      </form>
+
+      <button
+        class="btn"
+        style="background: #3498db"
+        onclick="location.reload();"
+      >
+        🔄 Refresh
+      </button>
+
+      <div style="margin-left: auto">
+        <a
+          href="{{ url_for('login.logout') }}"
+          class="btn"
+          style="background: #e74c3c"
+          >🚪 Logout</a
+        >
+      </div>
+    </div>
+
+    <table>
+      <tr>
+        <th>Filename</th>
+        <th>Size</th>
+        <th>Uploaded At</th>
+        <th>Status</th>
+        <th>Action</th>
+      </tr>
+
+      {% for f in files %}
+      <tr>
+        <td>{{ f.filename }}</td>
+
+        <td>
+          {% if f.size < 1000 %} {{ f.size }} B {% elif f.size < 1000*1000 %} {{
+          (f.size/1000)|round(2) }} KB {% elif f.size < 1000*1000*1000 %} {{
+          (f.size/1000/1000)|round(2) }} MB {% else %} {{
+          (f.size/1000/1000/1000)|round(2) }} GB {% endif %}
+        </td>
+
+        <td>{{ f.upload_time }}</td>
+
+        <td>
+          {% if f.status == "UPLOADED" %}
+          <span style="color: green; font-weight: bold">Uploaded</span>
+          {% elif f.status == "UPLOADING" %}
+          <span
+            class="uploading-flag"
+            id="progress-{{f.file_id}}"
+            style="color: orange; font-weight: bold"
+          >
+            Uploading...
+          </span>
+          {% endif %}
+        </td>
+
+        <td>
+          {% if f.status == "UPLOADED" %}
+          <form
+            action="{{ url_for('client_storage.download_file', file_id=f.file_id) }}"
+            method="POST"
+            style="display: inline"
+          >
+            <button class="btn btn-download">⬇ Download</button>
+          </form>
+
+          <form
+            action="{{ url_for('client_storage.delete_file', file_id=f.file_id) }}"
+            method="POST"
+            style="display: inline"
+          >
+            <button
+              class="btn btn-delete"
+              type="submit"
+              onclick="return confirm('Delete this file?')"
+            >
+              🗑 Delete
+            </button>
+          </form>
+
+          {% elif f.status == "UPLOADING" %}
+          <a
+            href="{{ url_for('client_storage.cancel_upload', file_id=f.file_id) }}"
+            class="btn btn-cancel"
+            >✖ Cancel</a
+          >
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+
+    <script>
+      if (document.querySelector(".uploading-flag")) {
+        setTimeout(() => location.reload(), 3000);
+      }
+    </script>
+  </body>
+</html>
