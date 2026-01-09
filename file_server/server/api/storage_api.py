@@ -3,11 +3,9 @@ from flask import Blueprint, request, jsonify
 from db.model import (
     get_files_by_client,
     get_file,
-    add_file,
     update_file_status,
     delete_file,
     create_action,
-    finish_file_upload,
     get_action_by_file,
     set_action_status,
 )
@@ -47,6 +45,36 @@ def request_upload(client_id):
         ),
         201,
     )
+
+
+# ========== REQUEST UPLOAD ==========
+@storage_bp.route("/storage/file/<file_id>/cancel", methods=["POST"])
+def cancel_upload(file_id):
+    if not check_token():
+        return jsonify({"status": "error", "message": "unauthorized"}), 401
+
+    f = get_file(file_id)
+    if not f:
+        return jsonify({"status": "error", "message": "not-found"}), 404
+
+    if f["status"] != "UPLOADING":
+        return jsonify({"status": "error", "message": "not-active"}), 400
+
+    action = get_action_by_file(file_id)
+    if action:
+        set_action_status(action["action_id"], "CANCELED")
+
+    file_path = os.path.join(
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "storage")),
+        f["client_id"],
+        f["filename"],
+    )
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+    delete_file(file_id)
+
+    return jsonify({"status": "ok", "message": "upload-canceled"}), 200
 
 
 # ========== DELETE ==========
