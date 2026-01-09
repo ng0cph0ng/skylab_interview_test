@@ -1,5 +1,3 @@
 Về cơ bản, hoàn thành sơ bộ các yêu cầu được giao, tuy nhiên có một số điều chưa thực hiện được:
-•	Chưa kiểm thử chạy Client trên Windows.
-•	Chưa có progress real-time khi đang upload.
-•	Chưa có tiếp tục action nếu đang truyền mà mất kết nối.
-•	Chưa chạy test case đã đề cập.
+•	Chưa có tiếp tục action nếu đang truyền mà mất kết nối (đã resume được action nhưng file nhận đang bị thiếu bytes).
+•	Chưa chạy được test case thứ 2 đã đề cập.
