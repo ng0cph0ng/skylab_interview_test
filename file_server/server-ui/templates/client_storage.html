@@ -119,15 +119,20 @@
         <td>
           {% if f.status == "UPLOADED" %}
           <span style="color: green; font-weight: bold">Uploaded</span>
-          {% elif f.status == "UPLOADING" %}
+          {% elif f.status == "UPLOADING" %} {% set pct = (f.received * 100 /
+          f.size) | round(1) %} {% if pct >= 100 %}
+          <span style="color: green; font-weight: bold"
+            >Uploaded (verifying…)</span
+          >
+          {% else %}
           <span
             class="uploading-flag"
             id="progress-{{f.file_id}}"
             style="color: orange; font-weight: bold"
           >
-            Uploading...
+            Uploading {{ pct }}%
           </span>
-          {% endif %}
+          {% endif %} {% endif %}
         </td>
 
         <td>
