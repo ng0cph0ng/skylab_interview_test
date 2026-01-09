@@ -145,11 +145,14 @@ def list_clients_by_user(username):
 def add_file(client_id, filename, size, status):
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO files (client_id, filename, size, upload_time, status)
-        VALUES (?, ?, ?, datetime('now'), ?)
-    """, (client_id, filename, size, status))
-    
+    cur.execute(
+        """
+        INSERT INTO files (client_id, filename, size, received, checksum, upload_time, status)
+        VALUES (?, ?, ?, 0, NULL, datetime('now'), ?)
+    """,
+        (client_id, filename, size, status),
+    )
+
     file_id = cur.lastrowid
     conn.commit()
     conn.close()
@@ -166,6 +169,21 @@ def update_file_status(file_id, status):
         WHERE file_id = ?
         """,
         (status, file_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def update_file_received(file_id, received):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        UPDATE files
+        SET received = ?
+        WHERE file_id = ?
+    """,
+        (received, file_id),
     )
     conn.commit()
     conn.close()
@@ -195,40 +213,59 @@ def get_file(file_id):
     return dict(row) if row else None
 
 
-def update_file_progress(file_id, progress):
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        UPDATE files
-        SET status='UPLOADING', size=?
-        WHERE file_id=?
-    """,
-        (progress, file_id),
-    )
-    conn.commit()
-    conn.close()
-
-
-def finish_file_upload(file_id, real_size):
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        UPDATE files
-        SET status='UPLOADED', size=?, upload_time=datetime('now')
-        WHERE file_id=?
-    """,
-        (real_size, file_id),
-    )
-    conn.commit()
-    conn.close()
-
-
 def delete_file(file_id):
     conn = get_connection()
     cur = conn.cursor()
+    cur.execute("UPDATE actions SET file_id=NULL WHERE file_id=?", (file_id,))
     cur.execute("DELETE FROM files WHERE file_id=?", (file_id,))
+    conn.commit()
+    conn.close()
+
+
+def update_file_progress(file_id, received):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        UPDATE files
+        SET received = ?, status='UPLOADING'
+        WHERE file_id = ?
+    """,
+        (received, file_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def finish_file_upload(file_id, checksum=None):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        UPDATE files
+        SET status='UPLOADED',
+            received = size,
+            checksum = COALESCE(?, checksum),
+            upload_time=datetime('now')
+        WHERE file_id = ?
+    """,
+        (checksum, file_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def attach_file_to_action(action_id, file_id):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        UPDATE actions
+        SET file_id = ?
+        WHERE action_id = ?
+        """,
+        (file_id, action_id),
+    )
     conn.commit()
     conn.close()
 
@@ -278,13 +315,12 @@ def mark_action_canceled(action_id):
     set_action_status(action_id, "CANCELED")
 
 
-def get_action(action_id):
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM actions WHERE action_id=?", (action_id,))
-    row = cur.fetchone()
-    conn.close()
-    return dict(row) if row else None
+def mark_action_interrupted(action_id):
+    set_action_status(action_id, "INTERRUPTED")
+
+
+def mark_action_resumed(action_id):
+    set_action_status(action_id, "RUNNING")
 
 
 def get_action(action_id):
@@ -319,6 +355,25 @@ def get_pending_actions_by_client(client_id):
     rows = cur.fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def get_interrupted_action(client_id):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT action_id, client_id, file_id, action_type, status
+        FROM actions
+        WHERE client_id=? AND status='INTERRUPTED'
+        ORDER BY action_id ASC LIMIT 1
+    """,
+        (client_id,),
+    )
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        return None
+    return dict(row)
 
 
 def cancel_upload_action(action_id, file_id):
